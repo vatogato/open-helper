@@ -4,8 +4,5 @@
 #todo: better loading of necessary ruby files
 
 #todo: implement tmux session logic to another file
-
-Tmux.create_session_detached(session.name)
-Tmux.send_command()
-
-session = Session.new("main")
+tmux send-keys -t 0.0 "ruby dmt_pry.rb $1" C-m
+tmux attach-session -t 0.0

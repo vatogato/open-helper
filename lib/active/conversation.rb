@@ -1,3 +1,5 @@
+require_relative 'prompt'
+
 class Conversation
   #a Conversation is a cumulative context curated
   # over sessions.
@@ -12,9 +14,13 @@ class Conversation
   # also allows the storage of important information for injection
   # at any point
   #
-
-    def initialize
+    
+    attr_reader :name, :mode, :context
+    def initialize(name, mode = 'default')
+      @name = name
+      @mode = mode
       @context = []
+      @system_prompt = Prompt.new('system', @name, @mode )
     end
 
     def add_context(text)

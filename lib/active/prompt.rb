@@ -16,10 +16,11 @@ class Prompt
 attr_reader :type, :name
 attr_accessor :mode
 
-def initialize(type, name, mode = 'default')
+def initialize(type, name, mode = 'default', variables = {})
   @type = type
   @name = name
   @mode = mode
+  @variables = variables
 end
 
 def text

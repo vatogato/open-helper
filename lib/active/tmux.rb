@@ -1,8 +1,5 @@
 require 'open3'
 
-#todo: implement Tmux class with proper abstractions, maybe move
-#      this functionality to Tmux class methods
-
 module Tmux
   # List all tmux sessions
   def self.list_sessions
@@ -40,7 +37,7 @@ module Tmux
   end 
 
 # Create a new window in a tmux session
-def self.create_window(session_name, window_name = nil)
+  def self.create_window(session_name, window_name = nil)
     command = "tmux new-window"
     command += " -t #{session_name}" if session_name
     command += " -n #{window_name}" if window_name
@@ -54,9 +51,14 @@ def self.create_window(session_name, window_name = nil)
   end
 
    # Send a command to a tmux session
-   def self.send_input(session_name, command)
-    system("tmux send-keys -t #{session_name} '#{command}'")
-  end
+   def self.send_input(session_name, input)
+    system("tmux send-keys -t #{session_name} '#{input}'")
+   end
+
+   # Send a command to a tmux session
+   def self.send_input_to_pane(pane_id, input)
+    system("tmux send-keys -t #{pane_id} '#{input}'")
+   end
 
   # Capture the output from a tmux session
   def self.capture_output(session_name, pane_id = 0)
@@ -81,7 +83,7 @@ def self.create_window(session_name, window_name = nil)
     system("tmux select-pane -t #{session_name}.#{pane_id}")
   end
 
-  # Kill a pane in a tmux session
+  # End a pane in a tmux session
   def self.end_pane(session_name, pane_id)
     system("tmux kill-pane -t #{session_name}.#{pane_id}")
   end

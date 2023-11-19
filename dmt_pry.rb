@@ -8,55 +8,36 @@ require 'langchain'
 require_relative 'lib/active/tmux'  # This line loads the Tmux module
 require_relative 'lib/active/prompt'  # This line loads the Tmux module
 require_relative 'lib/active/conversation' 
+require_relative 'lib/active/pry_helper'
 #todo: better loading of necessary ruby files
 
 class Session
 # create ollama client from LLM Module
-MODELS = { completions: 'mistral-openorca',
+LLM_MODELS = { completions: 'mistral-openorca',
            embeddings: 'mistral-openorca',
            qa: 'mistral-openorca' }
 
-OLLAMA_URL ||= ENV['OLLAMA_URL'] || 'http://localhost:11434'
+LLM_SERVER_BASE_URL ||= ENV['OLLAMA_URL'] || 'http://localhost:11434'
 
 attr_reader :name
+attr_reader :conversation
 
 def initialize(name)
   @name = "helper_#{name}"
-  @ollama_models = MODELS
-  @ollama_url = OLLAMA_URL
-  @conversation = Conversation.new
+  @ollama_models = LLM_MODELS
+  @ollama_url = LLM_SERVER_BASE_URL
+  @conversation = Conversation.new(@name)
 end
 
 #todo: probably shouldn't expose this outside class idk
-def self.ollama_client(url = @ollama_url)
+def ollama_client(url = @ollama_url)
   client = Langchain::LLM::Ollama.new(url: url)
 end
 
-
-#todo: move this into Pry hooks
-def self.setup
-  puts "Setting up Helper Pry session #{@name}"
-  Pry.main.extend(Tmux)
+def completions_model
+  @ollama_models[:completions]
 end
 
-def self.start
-  puts "starting Pry with binding"
-  Pry.start(binding)
-end
-
-#todo: same
-#todo: configurable verbosity for output
-def self.teardown
-  puts "tearing down Pry for #{@name}"
-  Tmux.end_session(@name) 
-end
-
-def self.run(name)
-  puts "running"
-  setup
-  start
-  teardown
-end
 
 def get_binding
   binding
@@ -73,14 +54,12 @@ end
 # Tmux.create_session_detached(session.name)
 # Tmux.send_command()
 
-session_name = ARGV[1]
-if ARGV[0] == "start_tmux"
-  
-  Tmux.create_detached_session(session_name)
-  Tmux.send_command(session_name, "ruby ./dmt_pry.rb #{session_name} run_pry")
-elsif ARGV[0] == "run_pry"
-  puts "in dmt run"
-  Tmux.attach_session(session_name)
-  Session.new(session_name).run
-end
+  session_type = ARGV[0]
+  Pry.main.extend(Tmux)
+  PryHelper::Hooks.helper
+  session = Session.new(session_type)
+  PryHelper::Hooks.ollama(session.ollama_client, session.completions_model)
+
+  Pry.start(Session.new(session_type).get_binding)
+
 
