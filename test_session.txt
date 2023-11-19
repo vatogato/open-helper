@@ -1,0 +1,6 @@
+testing
+puts "meow"
+hist --show
+hist --save
+ls -m
+self.inspect

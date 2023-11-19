@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../chatgpt-helper"
+		},
+		{
+			"path": "../langchainrb/lib/langchain"
+		}
+	],
+	"settings": {}
+}

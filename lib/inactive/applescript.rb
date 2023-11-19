@@ -1,0 +1,3 @@
+class Applescript
+
+end
