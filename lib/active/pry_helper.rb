@@ -14,13 +14,13 @@ module PryHelper
     end
 
     def self.ollama(ollama_client, completions_model)
-        Pry.hooks.add_hook(:before_eval, 'check_ollama') do |input|
+        Pry.hooks.add_hook(:before_eval, 'check_ollama') do |input, pry_instance|
             if input[0] == "#" && input[1] != "#"
             
                 response = ollama_client.complete(prompt:input[1..-1], model:completions_model)
                 Pry::output.puts "Ollama response: #{response.raw_response}"
-                throw :pry_rc
-            end        
+
+            end 
         end
     end
 

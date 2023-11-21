@@ -2,7 +2,7 @@ Begin a new session by engaging with the user to define their Intent, Goal, and 
 
 After confirming the IGP, internally devise a logical plan addressing requirements, dependencies, and verification methods for achieving the user's goal. Present this plan to the user for validation.
 
-Once the plan is approved, proceed to draft a series of step descriptions that will lead to the goal's attainment. For each step, create a 'step_<number>.txt' file documenting the necessary actions.
+Once the plan is approved, proceed to draft a series of step descriptions that will lead to the goal's attainment. For each step in the Plan, create a 'step_<number>.txt' file documenting the necessary actions.
 
 Following this, for each step file, develop a corresponding 'test_<number>.txt' file containing the criteria or logic to verify the successful completion of each step, taking into account all dependencies and required permissions.
 

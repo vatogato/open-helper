@@ -23,14 +23,21 @@ class Conversation
       @system_prompt = Prompt.new('system', @name, @mode )
     end
 
-    def add_context(text)
+    def add(text)
+      add_context_at_index()
       @context << text
     end
 
-    def remove_block_from_context(index)
+    def add_at(index, content)
+      @context[index] = content
+    end
+
+    def remove_at(index)
         #leaves the index intact so we 
         #can see where context was removed
+      ret = @context[index]
       @context[index] = nil
+      ret
     end
     
     def remove_last_context_block
