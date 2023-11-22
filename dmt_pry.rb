@@ -12,30 +12,30 @@ require_relative 'lib/active/pry_helper'
 #todo: better loading of necessary ruby files
 
 class Session
-# create ollama client from LLM Module
+# create llm client from LLM Module
 LLM_MODELS = { completions: 'mistral-openorca',
            embeddings: 'mistral-openorca',
            qa: 'mistral-openorca' }
 
-LLM_SERVER_BASE_URL ||= ENV['OLLAMA_URL'] || 'http://localhost:11434'
+LLM_SERVER_BASE_URL ||= ENV['llm_URL'] || 'http://localhost:11434'
 
 attr_reader :name
 attr_reader :conversation
 
 def initialize(name)
   @name = "helper_#{name}"
-  @ollama_models = LLM_MODELS
-  @ollama_url = LLM_SERVER_BASE_URL
+  @llm_models = LLM_MODELS
+  @llm_url = LLM_SERVER_BASE_URL
   @conversation = Conversation.new(@name)
 end
 
 #todo: probably shouldn't expose this outside class idk
-def ollama_client(url = @ollama_url)
+def llm_client(url = @llm_url)
   client = Langchain::LLM::Ollama.new(url: url)
 end
 
 def completions_model
-  @ollama_models[:completions]
+  @llm_models[:completions]
 end
 
 
@@ -58,7 +58,7 @@ end
   Pry.main.extend(Tmux)
   PryHelper::Hooks.helper
   session = Session.new(session_type)
-  PryHelper::Hooks.ollama(session.ollama_client, session.completions_model)
+  PryHelper::Hooks.llm(session.llm_client, session.completions_model)
 
   Pry.start(Session.new(session_type).get_binding)
 
