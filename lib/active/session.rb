@@ -1,64 +1,26 @@
-require 'pry'  
-require 'faraday'
-require 'langchain'
-require_relative 'tmux'  # This line loads the Tmux module
-require_relative 'prompt'  # This line loads the Tmux module
-require_relative 'conversation' 
-#todo: better loading of necessary ruby files
 
 class Session
-# create ollama client from LLM Module
-MODELS = { completions: 'mistral-openorca',
-           embeddings: 'mistral-openorca',
-           qa: 'mistral-openorca' }
+  attr_reader :name,:type
 
-OLLAMA_URL ||= ENV['OLLAMA_URL'] || 'http://localhost:11434'
+  def initialize(name,tmux_session, type)
+    @name = name
+    @type = type
+    @started_at = Time.now.to_i
+    @tmux_session = tmux_session
 
-attr_reader :name
-def initialize(name)
-  @name = "helper_#{name}"
-  @ollama_models = MODELS
-  @ollama_url = OLLAMA_URL
-  @conversation = Conversation.new
-end
+  end
 
-#todo: probably shouldn't expose this outside class idk
-def self.ollama_client(url = @ollama_url)
-  client = Langchain::LLM::Ollama.new(url: url)
-end
+  def send_keys_to_control_pane(keys)
+    @tmux_session.windows.first.panes.select{|p| p.id == 0}.first.send_keys(keys)
+  end
 
+  def send_command_to_control_pane(command)
+    @tmux_session.windows.first.panes.select{|p| p.id == 0}.first.send_command(command)
+  end
 
-#todo: move this into Pry hooks
-def self.setup
-  puts "Setting up Helper Pry session #{@name}"
-  Pry.main.extend(Tmux)
-end
+  def get_binding
+    binding
+  end
 
-def self.start
-  puts "starting Pry with binding"
-  Pry.start(binding)
-end
-
-#todo: same
-#todo: configurable verbosity for output
-def self.teardown
-  puts "tearing down Pry for #{@name}"
-  Tmux.end_session(@name) 
-end
-
-def self.run(name)
-  puts "running"
-  setup
-  start
-  teardown
-end
-
-def get_binding
-  binding
-end
-
-#todo: proper class encapsulation or something whatever
-
-
-
+  # TODO: proper class encapsulation or something whatever
 end

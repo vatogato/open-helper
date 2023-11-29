@@ -3,15 +3,13 @@ class Prompt
 #todo: create json or yaml wrapper abstractions
        #that return the object based on file contents
 
-#yeah yeah i know. todo. gross
-@@CWD = `pwd`.chomp
 
 #todo: proper encapsulation into type system
 #modes always includes the default
+#prompts dir structure is root/data/prompts/<type>/name_mode
 @@PROMPTS = [{type: 'system', name:'main', modes:['default','polite']}]
 
-@@PROMPTS_DIR_PATH="#{@@CWD}/prompts"
-@@SYSTEM_PROMPTS_DIR_PATH="#{@@PROMPTS_DIR_PATH}/system"
+@@PROMPTS_DIR_PATH="./data/prompts/"
 
 attr_reader :type, :name
 attr_accessor :mode
@@ -24,11 +22,11 @@ def initialize(type, name, mode = 'default', variables = {})
 end
 
 def text
-  self.get_prompt_text(@type, @name, @mode)
+  Prompt.text(@type, @name, @mode)
 end
 
 def modes
-  self.get_modes(@type, @name)
+  Prompt.get_modes(@type, @name)
 end
 
 
@@ -48,6 +46,10 @@ end
 def self.get_prompt_filenames(type = nil,name = nil,mode = nil)
   #hey look at me i learned a thing.  will try and do this or abstract to 
   # a validator module or something
+  unless mode.nil?
+    return "#{@@PROMPTS_DIR_PATH}/#{type}/#{name}_#{mode}.txt"
+  end
+
   method_params = method(:get_prompt_filenames).parameters.map(&:last)
   method_params.each do |param|
     raise ArgumentError, "Parameter #{param} is missing or undefined" unless binding.local_variable_defined?(param)
@@ -65,16 +67,12 @@ def self.get_prompt_filenames(type = nil,name = nil,mode = nil)
   
 
 
-def self.cat_prompt_raw_text(filename)
+def self.get_prompt_text(filepath)
   begin
-    `cat #{SYSTEM_PROMPTS_DIR_PATH}/#{filename}`
+    `cat #{filepath}`.chomp  
   rescue => e
     "fatal error during cat command: #{e.to_s}"
   end
-end
-
-def self.get_prompt_text(filename)
-    cat_prompt_raw_text(filename).chomp
 end
 
 

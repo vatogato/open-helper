@@ -24,7 +24,6 @@ class Conversation
     end
 
     def add(text)
-      add_context_at_index()
       @context << text
     end
 
@@ -46,6 +45,10 @@ class Conversation
 
     def full_context
       @context.join
+    end
+
+    def wipe_context
+      @context = []
     end
 
 end
