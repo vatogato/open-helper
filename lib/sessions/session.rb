@@ -15,6 +15,10 @@ class Session
 
   end
 
+  def self.available_sessions
+    Dir.glob("*").reject{|session| session == "session.rb"}
+  end
+
   def send_keys_to_pane(keys, id)
     @tmux_session.windows.first.panes.select{|p| p.id == id}.first.send_keys(keys)
   end
@@ -23,9 +27,7 @@ class Session
     @tmux_session.windows.first.panes.select{|p| p.id == id}.first.send_command(command)
   end
 
-  def self.available_sessions
-    Dir.glob("*").reject{|session| session == "session.rb"}
-  end
+  
 
   def add_pry_hooks
     Pry.hooks.add_hook(:before_session, 'noprompt') do |output, binding, pry_instance|
@@ -36,7 +38,7 @@ class Session
       system("clear")
       pry_instance.prompt = Pry::Prompt.new('empty', 'No visible prompt', [proc { '' }, proc { '' }])
       puts "\n\nH E L P E R\n\nOptions:\n\n" 
-      available_sessions.each_with_index do |session_type, index|
+      Session.available_sessions.each_with_index do |session_type, index|
         puts "#{index+1}: Start #{session_type}"
       end
     end
