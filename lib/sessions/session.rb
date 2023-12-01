@@ -1,25 +1,28 @@
-require_relative 'tmux'
+require_relative '../tmux'
+require 'pry'
 
 class Session
 
-  @@data_dir = '../../data/sessions'
   attr_reader :name,:context,:tmux_session
 
   def initialize(name, tmux_session_name)
     @name = name
-    @started_at = Time.now.to_i
+    #need to find or create here in case I tihnk for non duplicated something or other maybe
     @tmux_session = TmuxSession.load_from_name(tmux_session_name)
-    @data_dir = @@data_dir + "/#{@name}/#{@started_at}"
     @context = []
 
   end
 
-  def send_keys_to_control_pane(keys)
-    @tmux_session.windows.first.panes.select{|p| p.id == 0}.first.send_keys(keys)
+  def send_keys_to_pane(keys, id)
+    @tmux_session.windows.first.panes.select{|p| p.id == id}.first.send_keys(keys)
   end
 
-  def send_command_to_control_pane(command)
-    @tmux_session.windows.first.panes.select{|p| p.id == 0}.first.send_command(command)
+  def send_command_to_pane(command, id)
+    @tmux_session.windows.first.panes.select{|p| p.id == id}.first.send_command(command)
+  end
+
+  def self.available_sessions
+    Dir.glob("*").reject{|session| session == "session.rb"}
   end
 
   def add_hooks
@@ -32,9 +35,18 @@ class Session
     pry_instance.prompt = Pry::Prompt.new('empty', 'No visible prompt', [proc { '' }, proc { '' }])
     puts "\n\nH E L P E R   \n
     \n
-    How can I help you?"
-          
+    Options:\n\n" + 
+    available_sessions.each_with_index do |session_type, index|
+      puts "#{index+1}: Start #{session_type}"
     end
+  end
+
+  def start(tmux_session_name)
+    Session.new("helper", tmux_session_name).add_hooks.binding.pry
+  end
+
+  if ARGV[0] && ARGV[0] == "pry"
+    start(ARGV[1])
   end
 
 end

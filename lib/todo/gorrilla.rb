@@ -1,5 +1,0 @@
-class Gorilla
-
-
-
-end

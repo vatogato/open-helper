@@ -1,10 +1,8 @@
 
 require 'pry'  
-require_relative 'lib/active/tmux'  # This line loads the Tmux module
-# require_relative 'lib/active/prompt'  # This line loads the Tmux module
-# require_relative 'lib/active/conversation' 
-require_relative 'lib/active/pry_helper'
-require_relative 'lib/active/pryllama_session'
+require 'open3'
+require_relative 'library'
+require_relative 'globals'
 #todo: better loading of necessary ruby files
 
 #step = ARGV[1]
@@ -13,40 +11,31 @@ require_relative 'lib/active/pryllama_session'
 #different scripts for tmux setup and pry
 
 
-name = ARGV[0]
+step = ARGV[0]
+name = ARGV[1]
 
 
-tmux_session = TmuxSession.create(name)
 #todo: proper config constants for things like HELPER_COMMAND
+if step == "setup"
+    git_command = "git add .; git commit -m 'checking out new helper session';" + "git checkout -B session_#{name}_#{Time.now.to_i}"
 
-pane = tmux_session.windows.first.panes.first
+    Open3.capture2(git_command)
 
-commands = ENV.select{|key,value| key.include? "HELPER_COMMAND"}
+    Open3.capture2("cd #{LIB_DIR}/sessions")
 
-#sort by number in env var key
-commands = commands.sort_by{|k,v| k.split("_").last}
 
-if commands.nil? || commands.empty?
-  puts "You didn't specify any commands. set ENV vars for HELPER_COMMAND_X (x = 1,2,3, etc)"
-  exit 1
+    tmux_session = TmuxSession.create(name, detached:false, script:"ruby helper.rb #{name} start")
+
+elsif step == "start"
+
+Open3.capture2("ruby session.rb pry #{name}")
+
+    #need to attach at the last section
+    # for a bit of magic to get this setup in a running
+    #Tmux session from within Ruby.  I refused to make a bash script around this.
+    #refused, I say.  Whether or not this was a good idea, time will tell, but good and bad
+    # are mostly subjective anyway, so whatever.
+
 end
-
-#for each command, issueto first tmux pane
-
-commands.each do |key,command|
-    puts "in commands loop"
-    pane.send_command(command)
-end
-
-# pane.send_command('pry')
-# pane.send_command('PryLlamaSession.new(' + name + ').start')
-
-#need to attach at the last section
-# for a bit of magic to get this setup in a running
-#Tmux session from within Ruby.  I refused to make a bash script around this.
-#refused, I say.  Whether or not this was a good idea, time will tell, but good and bad
-# are mostly subjective anyway, so whatever.
-
-tmux_session.attach
 
 
