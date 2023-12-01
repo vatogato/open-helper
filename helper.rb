@@ -20,12 +20,15 @@ name = ARGV[0]
 
     Open3.capture2(git_command)
 
+
+    puts "changing directory to sessions"
+
+    Dir.chdir("#{LIB_DIR}/sessions")
+
     puts "creating tmux session"
     tmux_session = TmuxSession.create(name, detached:true,script:'')
 
-    puts "changing directory to sessions"
     
-    Dir.chdir("#{LIB_DIR}/sessions")
 
     tmux_session.first_pane.send_command("ruby session.rb pry #{name}")
     tmux_session.attach
