@@ -74,7 +74,7 @@ class TmuxSession
   # Create a new tmux session
 
   def self.create_detached_session(session_name)
-    self.create_session(session_name, deatached:true, script:'')
+    self.create_session(session_name, detached:true, script:'')
   end
 
   #todo: consolidate logic of system command execution
