@@ -28,7 +28,7 @@ if step == "setup"
 elsif step == "start"
 
     puts "changing directory to sessions"
-    Open3.capture2("cd #{LIB_DIR}/sessions")
+    system("cd #{LIB_DIR}/sessions")
 
     Open3.capture2("ruby session.rb pry #{name}")
 
