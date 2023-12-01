@@ -25,6 +25,14 @@ class TmuxSession
     TmuxSession.end_session(name)
   end
 
+  def attach
+    TmuxSession.attach_session(@name)
+  end
+
+  def first
+    @windows.first.panes.first
+  end
+
   def self.list
     @@sessions
   end
@@ -78,7 +86,7 @@ class TmuxSession
   end 
 
   def self.attach_session(session_name)
-    system("tmux attach-session -t #{session}")
+    system("tmux attach-session -t #{session_name}")
   end
 
   def self.end_session(session_name) 
@@ -216,7 +224,7 @@ class TmuxPane
 
   # Send a command to a tmux pane
   def self.send_command_to_pane(target_id, command)
-    system("tmux send-keys -t #{target_id} '#{command}' C-m")
+    system("tmux send-keys -t #{target_id} \"#{command}\" C-m")
   end
 
    # Send a keys to a tmux pane

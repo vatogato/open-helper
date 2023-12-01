@@ -64,8 +64,6 @@ def self.get_prompt_filenames(type = nil,name = nil,mode = nil)
     filenames
   end
 
-  
-
 
 def self.get_prompt_text(filepath)
   begin

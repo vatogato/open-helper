@@ -49,9 +49,19 @@ def self.list_tags(model)
 end
 
 
-def self.command(command)
-    Ollama.sys(command)
+#change the following implementation
+#to use method missing for all
+#ollama related commands
+def self.list
+    res = Ollama.command("list")
+    rows = res.split("\n")
+    headers = rows.first.split("\t").map(&:strip)
+    data = rows[1..-1].map { |row| headers.zip(row.split("\t").map(&:strip)).to_h }
+end
 
+
+def self.command(command)
+    Ollama.osys('ollama ' + command)
 end
 
 #expects Open3.capture3 response object
@@ -60,7 +70,8 @@ def self.parse_osys_response(response)
     raw = response.first
     code = response.last.exitstatus
     return false unless code == 0
-    
+    puts response.first
+    response.first
 
 end
 
@@ -73,7 +84,7 @@ def self.osys(command)
     end
   Ollama.parse_osys_response(response)
 end 
-binding.pry
+
 end
 
 
