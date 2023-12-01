@@ -17,18 +17,20 @@ name = ARGV[1]
 
 #todo: proper config constants for things like HELPER_COMMAND
 if step == "setup"
+    puts "saving and creating new branch"
     git_command = "git add .; git commit -m 'checking out new helper session';" + "git checkout -B session_#{name}_#{Time.now.to_i}"
 
     Open3.capture2(git_command)
 
-    Open3.capture2("cd #{LIB_DIR}/sessions")
-
-
-    tmux_session = TmuxSession.create(name, detached:false, script:"ruby helper.rb #{name} start")
+    puts "creating tmux session"
+    tmux_session = TmuxSession.create(name, detached:false, script:"ruby helper.rb start #{name}")
 
 elsif step == "start"
 
-Open3.capture2("ruby session.rb pry #{name}")
+    puts "changing directory to sessions"
+    Open3.capture2("cd #{LIB_DIR}/sessions")
+
+    Open3.capture2("ruby session.rb pry #{name}")
 
     #need to attach at the last section
     # for a bit of magic to get this setup in a running

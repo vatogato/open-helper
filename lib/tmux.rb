@@ -46,7 +46,7 @@ class TmuxSession
   def self.create(name, detached:true, script:'')
     session = TmuxSession.new(name, @@count)
     detached ? create_detached_session(session.name) :
-                create_session(name, detached:false)
+                create_session(name, detached:false, script:script)
  
     session
   end
@@ -74,12 +74,12 @@ class TmuxSession
   # Create a new tmux session
 
   def self.create_detached_session(session_name)
-    self.create_session(session_name, true)
+    self.create_session(session_name, deatached:true, script:'')
   end
 
   #todo: consolidate logic of system command execution
   #use open3
-  def self.create_session(session_name, detached: true, script: '')
+  def self.create_session(session_name, detached:true, script: '')
     command = "tmux new-session"
     command += " -d" if detached
     command += " -s #{session_name}"
