@@ -29,7 +29,7 @@ class TmuxSession
     TmuxSession.attach_session(@name)
   end
 
-  def first
+  def first_pane
     @windows.first.panes.first
   end
 

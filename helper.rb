@@ -27,7 +27,9 @@ name = ARGV[0]
     
     Dir.chdir("#{LIB_DIR}/sessions")
 
-    system("ruby session.rb pry #{name}")
+    tmux_session.first_pane.send_command("ruby session.rb pry #{name}")
+    tmux_session.attach
+
 
     #need to attach at the last section
     # for a bit of magic to get this setup in a running
