@@ -30,7 +30,7 @@ elsif step == "start"
     puts "changing directory to sessions"
     system("cd #{LIB_DIR}/sessions")
 
-    Open3.capture2("ruby session.rb pry #{name}")
+    system("ruby session.rb pry #{name}")
 
     #need to attach at the last section
     # for a bit of magic to get this setup in a running
