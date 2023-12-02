@@ -18,7 +18,10 @@ name = ARGV[0]
     puts "saving and creating new branch"
 
     #todo: better git management
-    git_command = "git add .; git commit -m 'checking out new helper session';" + "git checkout -B session_#{name}_#{Time.now.to_i}"
+    #todo: revisit this idea
+    #todo: revisit revisiting this idea
+    #todo: die in an ourbourian struggle with executive function vis a vis an anime fight with the conceptual manifestion of your insecurity but kawaii
+    #git_command = "git add .; git commit -m 'checking out new helper session';" + "git checkout -B session_#{name}_#{Time.now.to_i}"
 
     Open3.capture2(git_command)
 
