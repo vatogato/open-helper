@@ -16,6 +16,8 @@ name = ARGV[0]
 
 #todo: proper config constants for things like HELPER_COMMAND
     puts "saving and creating new branch"
+
+    #todo: better git management
     git_command = "git add .; git commit -m 'checking out new helper session';" + "git checkout -B session_#{name}_#{Time.now.to_i}"
 
     Open3.capture2(git_command)
