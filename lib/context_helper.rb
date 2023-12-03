@@ -1,4 +1,4 @@
-module ContexHelper
+module ContextHelper
 
     
     #todo add separate methods for raw vs structured
@@ -6,7 +6,7 @@ module ContexHelper
     # raw text files, added the filepath so the LLM
     #knows what file it is working with contextually
     def self.create_context_from_files(filenames)
-        ContextHelper.add_files_to_context([])
+        ContexttHelper.add_files_to_context([])
     end
 
 

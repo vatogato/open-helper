@@ -23,7 +23,7 @@ name = ARGV[0]
     #todo: die in an ourbourian struggle with executive function vis a vis an anime fight with the conceptual manifestion of your insecurity but kawaii
     #git_command = "git add .; git commit -m 'checking out new helper session';" + "git checkout -B session_#{name}_#{Time.now.to_i}"
 
-    Open3.capture2(git_command)
+    #Open3.capture2(git_command)
 
 
     puts "changing directory to sessions"
