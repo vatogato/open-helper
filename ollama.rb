@@ -9,10 +9,6 @@ class Ollama
 
 OLLAMA_LIBRARY_URL = "https://ollama.ai/library"
 
-def initialize(name)
-    super(name)
-end
-    
 def self.library_list
     puts "Getting library listing from Ollama website. This might fail if their website structure changes."
     begin

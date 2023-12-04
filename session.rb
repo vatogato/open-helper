@@ -1,10 +1,10 @@
-require_relative '../tmux'
+require_relative 'tmux'
 require 'pry'
 require 'cli/ui'
-require_relative "../../globals"
+require_relative "globals"
 require 'langchain'
 require 'faraday'
-require_relative '../conversation' 
+require_relative 'conversation' 
 require_relative 'session'
 
 
@@ -168,6 +168,10 @@ class PryllamaSession < Session
   # TODO: proper class encapsulation or something whatever
 end
 
-if ARGV[0] && ARGV[0] == "pry"
+if ARGV[0] && ARGV[0] == "helper"
   Session.new("helper", ARGV[1]).start
+end
+
+if ARGV[0] && ARGV[0] == "pryllama"
+  PryllamaSession.new("helper", ARGV[1]).start
 end
