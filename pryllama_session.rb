@@ -5,86 +5,8 @@ require_relative "globals"
 require 'langchain'
 require 'faraday'
 require_relative 'conversation' 
-require_relative 'session'
 
-
-
-class Session
-
-  attr_reader :name,:context,:tmux_session
-
-  def initialize(name, tmux_session_name)
-    @name = name
-    #need to find or create here in case I tihnk for non duplicated something or other maybe
-    @tmux_session = TmuxSession.load_from_name(tmux_session_name)
-    @context = []
-
-  end
-
-  def self.available_sessions
-    Dir.glob("_session.rb").each do |session_filename|
-      {name:Session.name_from_file(session_filename), filename:session_filename}
-    end
-
-  end
-
-  def self.name_from_file(session_filename)
-    session_filename.split("_").first
-  end
-  
-  def self.get_subclasses
-    ObjectSpace.each_object(Class).select { |klass| klass < self }
-  end
-
-  def send_keys_to_pane(keys, id)
-    @tmux_session.windows.first.panes.select{|p| p.id == id}.first.send_keys(keys)
-  end
-
-  def send_command_to_pane(command, id)
-    @tmux_session.windows.first.panes.select{|p| p.id == id}.first.send_command(command)
-  end
-
-  
-
-  def add_pry_hooks
-    Pry.hooks.add_hook(:before_session, 'noprompt') do |output, binding, pry_instance|
-      pry_instance.prompt = Pry::Prompt.new('empty', 'No visible prompt', [proc { '' }, proc { '' }])
-      
-    end unless Pry.hooks.hook_exists?(:before_session, 'noprompt')
-  
-    Pry.hooks.add_hook(:before_session, 'helper_intro') do |output, binding, pry_instance|
-      system("clear")
-      CLI::UI::StdoutRouter.enable
-  
-      puts "\n\nH E L P E R\n\n"
-      CLI::UI::Prompt.ask('Select a session to start:') do |handler|
-        Session.get_subclasses.each do |subclass|
-          handler.option(subclass.to_s) { |selection| handle_session_selection(subclass) }
-        end
-      end 
-
-    end unless Pry.hooks.hook_exists?(:before_session, 'helper_intro')
-
-  end
-  
-  def handle_session_selection(selection)
-    # Implement what happens when a session is selected
-    #puts "Please enter a name for your #{selection} session: "
-    puts selection
-    puts  selection.name 
-    puts @tmux_session.name
-    selection.new(selection.name, @tmux_session.name).start
-  end
-  
-
-  def start
-    add_pry_hooks
-    binding.pry
-  end
-
-end
-
-class PryllamaSession < Session
+class PryllamaSession
 
   OLLAMA_MODELS = { completions: 'mistral-openorca',
                  embeddings: 'mistral-openorca',
@@ -97,11 +19,13 @@ class PryllamaSession < Session
   #todo: just realized this wont work for sesssions with multiple llm sources involved
   # or at least it'll work weirdly.  need. to decouple the logic of llm source 
 
-  def initialize(name, tmux_session_name)
-    super(name, tmux_session_name)
+  def initialize(name, tmux_session = nil)
+    @name = name
+    @tmux_session = tmux_session
     @ollama_models = OLLAMA_MODELS
     @ollama_url = OLLAMA_SERVER_BASE_URL
     @conversation = Conversation.new(@name)
+
 
     #i think this makse sense because all LLM based interactions should use the abstraction of 
     # a conversation with all its context management necessities
@@ -158,6 +82,20 @@ class PryllamaSession < Session
   # Helper specific meta tools, idk.
   end
 
+  def send_keys_to_pane(keys, id)
+    @tmux_session.windows.first.panes.select{|p| p.id == id}.first.send_keys(keys)
+  end
+
+  def send_command_to_pane(command, id)
+    @tmux_session.windows.first.panes.select{|p| p.id == id}.first.send_command(command)
+  end
+
+
+  def self.start(name)
+    tmux_session = TmuxSession.create(name, script:'ruby session.rb ')
+    PryllamaSession.new("pryllama", tmux_session).start
+  end
+
   def start
     add_hooks
     add_commands
@@ -168,10 +106,5 @@ class PryllamaSession < Session
   # TODO: proper class encapsulation or something whatever
 end
 
-if ARGV[0] && ARGV[0] == "helper"
-  Session.new("helper", ARGV[1]).start
-end
 
-if ARGV[0] && ARGV[0] == "pryllama"
-  PryllamaSession.new("helper", ARGV[1]).start
-end
+PryllamaSession.start("pryllama")
