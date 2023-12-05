@@ -5,4 +5,4 @@ cat pryllama_intro.txt | lolcat -a -d 5 -s 30
 printf "\\n\\n Press the Any key to continue...."
 read anykey
 
-tmux new-session -d -s pryllama  'ruby pryllama_session.rb'
+tmux new-session -s pryllama  'ruby pryllama_session.rb'
