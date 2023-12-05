@@ -6,6 +6,65 @@ require 'langchain'
 require 'faraday'
 require_relative 'conversation' 
 
+module Langchain::LLM
+  # Interface to Ollama API.
+  # Available models: https://ollama.ai/library
+  #
+  # Usage:
+  #    ollama = Langchain::LLM::Ollama.new(url: ENV["OLLAMA_URL"])
+  #
+  class Ollama < Base
+    attr_reader :url
+
+    DEFAULTS = {
+      temperature: 0.0,
+      completion_model_name: "llama2",
+      embeddings_model_name: "llama2"
+    }.freeze
+
+    # Initialize the Ollama client
+    # @param url [String] The URL of the Ollama instance
+    def initialize(url:)
+      @url = url
+    end
+
+    #
+    # Generate the completion for a given prompt
+    #
+    # @param prompt [String] The prompt to complete
+    # @param model [String] The model to use
+    # @param options [Hash] The options to use (https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values)
+    # @return [Langchain::LLM::OllamaResponse] Response object
+    #
+    def complete(prompt:, model: nil, system_prompt:nil, **options)
+      response = +""
+
+      model_name = model || DEFAULTS[:completion_model_name]
+
+      client.post("api/generate") do |req|
+        req.body = {}
+        req.body["prompt"] = prompt
+        req.body["model"] = model_name
+        req.body["system"] = system_prompt 
+
+        req.body["options"] = options if options.any?
+
+        # TODO: Implement streaming support when a &block is passed in
+        req.options.on_data = proc do |chunk, size|
+          json_chunk = JSON.parse(chunk)
+
+          unless json_chunk.dig("done")
+            response.to_s << JSON.parse(chunk).dig("response")
+          end
+        end
+      end
+
+      Langchain::LLM::OllamaResponse.new(response, model: model_name)
+    end
+
+end
+end
+
 class PryllamaSession
 
   OLLAMA_MODELS = { completions: 'mistral-openorca',
@@ -50,29 +109,47 @@ class PryllamaSession
     @conversation.full_context
   end
 
+  def add_config
+
+    original_print = Pry.config.print
+
+    Pry.config.print = proc do |output, value, _pry_|
+      original_print.call(output, value, _pry_)
+      output.puts
+    end
+
+  end
+
   def add_hooks
 
       Pry.hooks.add_hook(:before_session, 'pryllama_intro') do |output, binding, pry_instance|
       
       system("clear")
+
       pry_instance.prompt = Pry::Prompt.new('empty', 'No visible prompt', [proc { '' }, proc { '' }])
       puts "\n\nW E L C O M E  T O  PaRtY L L A M A  \n
       \n
-      #comment to send a query to defaul Ollama model "
+      #comment to send a query to default Ollama model \n\n"
       end unless Pry.hooks.hook_exists?(:before_session, 'pryllama_intro')
     
 
     Pry.hooks.add_hook(:before_eval, 'check_response') do |input|
-        
+        puts "\n"
         if input[0] == "#" && input[1] != "#"
-            conversation.add(input[1..-1])
-            response = langchain_client.complete(prompt:conversation.full_context, model:completions_model)
-            conversation.add(response.raw_response)
+            @conversation.add(input[1..-1])
+
+            puts "sending query #{@conversation}"
+            response = langchain_client.complete(prompt:@conversation.full_context, model:completions_model)
+            @conversation.add(response.raw_response)
 
             Pry::output.puts "Query and Response added to Conversation context"
             
         end 
     end unless Pry.hooks.hook_exists?(:before_eval, 'check_response')
+
+    Pry.hooks.add_hook(:after_eval, 'add_line') do |input|
+      puts "\n"
+  end unless Pry.hooks.hook_exists?(:before_eval, 'add_line')
 
   end
 
@@ -97,6 +174,7 @@ class PryllamaSession
   end
 
   def start
+    add_config
     add_hooks
     add_commands
 

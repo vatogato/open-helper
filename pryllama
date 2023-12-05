@@ -1,2 +1,2 @@
 #!/bin/bash
-tmux new-session -s pryllama  'ruby pryllama_session.rb pryllama'
+tmux new-session -d -s pryllama  'ruby pryllama_session.rb'
