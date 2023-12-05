@@ -1,2 +1,8 @@
 #!/bin/bash
+
+tiv  partyllama.png -h 80 -w 80 -2
+cat pryllama_intro.txt | lolcat -a -d 5 -s 30
+printf "\\n\\n Press the Any key to continue...."
+read anykey
+
 tmux new-session -d -s pryllama  'ruby pryllama_session.rb'

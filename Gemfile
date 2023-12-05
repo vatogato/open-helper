@@ -9,3 +9,5 @@ gem "langchainrb", "~> 0.7.4"
 gem "nokogiri", "~> 1.15"
 gem "html2text", "~> 0.2.1"
 gem "faraday", "~> 2.7"
+
+gem "lolcat", "~> 100.0"
