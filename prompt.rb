@@ -6,74 +6,74 @@ class Prompt
 
 #todo: proper encapsulation into type system
 #modes always includes the default
-#prompts dir structure is root/data/prompts/<type>/name_mode
-@@PROMPTS = [{name:'main', modes:['default','polite']}]
 
 @@PROMPTS_DIR_PATH="./"
 
 attr_reader :type, :name
 attr_accessor :mode
 
-def initialize(name, type:nil, mode:'default', variables:{})
+def initialize(type,name,text, variables:{})
   @type = type
-  @name = "prompt_#{name}"
-  @mode = mode
+  @name = name
+  @text = ""
   @variables = variables
 end
 
 def text
-  Prompt.text(@name, @mode)
+  return @text if @text and !@text.empty? 
+
+  @text = Prompt.text(@type, @name)
 end
 
-def modes
-  Prompt.get_modes(@name)
+def self.create(type, name, text)
+  Prompt.new(type, name, text)
 end
 
 
-def self.get_modes(name)
-  @@PROMPTS.select{|obj| obj[:name] == name }.first[:modes]
-end
-
-def self.text(type = nil, name = nil, mode = 'default')
+def self.text(type = nil, name = nil)
   method_params = method(:text).parameters.map(&:last)
   method_params.each do |param|
     raise ArgumentError, "Parameter #{param} is missing or undefined" unless binding.local_variable_defined?(param)
   end
 
-  get_prompt_text(get_prompt_filenames(name, mode))
+  get_prompt_text(type, name)
 end
 
-def self.get_prompt_filenames(type = nil,name = nil,mode = nil)
-  #hey look at me i learned a thing.  will try and do this or abstract to 
-  # a validator module or something
-  unless mode.nil?
-    return "#{@@PROMPTS_DIR_PATH}/#{name}_#{mode}.txt"
+def self.get_prompt_filename(type, name)
+  prompt_files.select do |filename| 
+    
+    filename.split("_")[1] == type && filename.split("_")[2] == name
   end
+end
 
-  method_params = method(:get_prompt_filenames).parameters.map(&:last)
-  method_params.each do |param|
-    raise ArgumentError, "Parameter #{param} is missing or undefined" unless binding.local_variable_defined?(param)
-  end
 
-  filenames = []
-    @@PROMPTS.select{|obj| obj[:type] == type && obj[:name] == name }.each do |prompt|
-        prompt[:modes].each do |mode|
-            filenames << "#{prompt[:name]}_#{mode}.txt"
-        end
+def self.get_prompt_text(type, name)
+  
+  if @text and !@text.empty?
+    @text
+  else
+
+    begin
+      `cat prompt_#{type}_#{name}.txt`.chomp  
+    rescue => e
+      "fatal error during cat command: #{e.to_s}"
     end
-    filenames
-  end
-
-
-def self.get_prompt_text(filepath)
-  begin
-    `cat #{filepath}`.chomp  
-  rescue => e
-    "fatal error during cat command: #{e.to_s}"
+ 
   end
 end
 
-
-
+def self.save_prompt(type, name, text)
+  File.write("prompt_#{type}_#{name}.txt", text)
 end
 
+def self.prompt_files
+  Dir.glob("prompt_*.txt")
+end
+
+def self.list_prompts
+  list = prompt_files.map{|filename| filename.split("_")[2]}
+  list.map{|prompt| puts prompt }
+  list
+end
+
+end

@@ -4,6 +4,7 @@ require 'cli/ui'
 require_relative "globals"
 require 'langchain'
 require 'faraday'
+require_relative 'prompt'
 require_relative 'conversation' 
 
 module Langchain::LLM
