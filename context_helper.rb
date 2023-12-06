@@ -1,3 +1,6 @@
+require 'faraday'
+require 'html2json'
+
 module ContextHelper
 
     
@@ -20,5 +23,7 @@ module ContextHelper
         add_file(context, file)  
         end
     end
+
+    def 
 
 end

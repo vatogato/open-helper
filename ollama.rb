@@ -1,7 +1,6 @@
 require 'open3'
 require 'faraday'
 require 'json'
-require 'pry'
 require 'html2text'
 
 
@@ -49,19 +48,24 @@ def self.list_tags(model)
 
 end
 
+def self.show_model_info(model, param)
+    Ollama.show(model, "--#{param}")
+end
+
 
 #change the following implementation
 #to use method missing for all
 #ollama related commands
-def self.list
-    res = Ollama.command("list")
-    rows = res.split("\n")
-    headers = rows.first.split("\t").map(&:strip)
-    data = rows[1..-1].map { |row| headers.zip(row.split("\t").map(&:strip)).to_h }
-end
+# def self.list
+#     res = Ollama.command("list")
+#     rows = res.split("\n")
+#     headers = rows.first.split("\t").map(&:strip)
+#     data = rows[1..-1].map { |row| headers.zip(row.split("\t").map(&:strip)).to_h }
+# end
 
 
-def self.command(command)
+def self.command(command, args = nil)
+    command += " #{args}" if args
     Ollama.osys('ollama ' + command)
 end
 
@@ -72,7 +76,7 @@ def self.parse_osys_response(response)
     code = response.last.exitstatus
     return false unless code == 0
     puts response.first
-    response.first
+    response.first.split("\n")
 
 end
 
@@ -85,6 +89,15 @@ def self.osys(command)
     end
   Ollama.parse_osys_response(response)
 end 
+
+def self.method_missing(method_name, *arguments, &block)
+    args = arguments.join(' ')
+    Ollama.command("#{method_name} #{args}")
+  end
+
+  def self.respond_to_missing?(method_name, include_private = false)
+    true
+  end
 
 end
 

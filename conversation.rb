@@ -15,12 +15,10 @@ class Conversation
   # at any point
   #
     
-    attr_reader :name, :mode, :context
-    def initialize(name, mode = 'default')
+    attr_reader :name,:context
+    def initialize(name)
       @name = name
-      @mode = mode
       @context = []
-      @system_prompt = Prompt.new('system', @name, @mode )
     end
 
     def add(text)

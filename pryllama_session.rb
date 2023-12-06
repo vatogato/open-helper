@@ -5,7 +5,8 @@ require_relative "globals"
 require 'langchain'
 require 'faraday'
 require_relative 'prompt'
-require_relative 'conversation' 
+require_relative 'conversation'
+require_relative 'ollama'
 
 module Langchain::LLM
   # Interface to Ollama API.
@@ -85,6 +86,7 @@ class PryllamaSession
     @ollama_models = OLLAMA_MODELS
     @ollama_url = OLLAMA_SERVER_BASE_URL
     @conversation = Conversation.new(@name)
+    @prompt = Prompt.new("system", "main", "")
 
 
     #i think this makse sense because all LLM based interactions should use the abstraction of 
@@ -140,7 +142,7 @@ class PryllamaSession
             @conversation.add(input[1..-1])
 
             puts "sending query #{@conversation}"
-            response = langchain_client.complete(prompt:@conversation.full_context, model:completions_model)
+            response = langchain_client.complete(prompt:@conversation.full_context, model:completions_model, system_prompt:@prompt.text, temperature:0.2)
             @conversation.add(response.raw_response)
 
             Pry::output.puts "Query and Response added to Conversation context"
@@ -169,9 +171,10 @@ class PryllamaSession
   end
 
 
-  def self.start(name)
-    tmux_session = TmuxSession.create(name, script:'ruby session.rb ')
-    PryllamaSession.new("pryllama", tmux_session).start
+  
+
+  def first_window
+    @tmux_session.windows.first
   end
 
   def start
@@ -180,6 +183,11 @@ class PryllamaSession
     add_commands
 
     Pry.start(binding)
+  end
+
+  def self.start(name)
+    tmux_session = TmuxSession.create(name, script:'ruby session.rb ')
+    PryllamaSession.new("pryllama", tmux_session).start
   end
 
   # TODO: proper class encapsulation or something whatever
