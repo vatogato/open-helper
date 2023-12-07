@@ -1,17 +1,10 @@
-#Helper
+#PryLlama
 
-Tmux sessions as interactive real time transformative code to natural language bindings.
+Pryllama is a Pry session running in a Tmux session connected with Ollama functionality.
 
-Intent:  decoupling of informative input and output vis a vis 
-its data layer || A brief but incredibly concise memoir detailing the craft
-of slowly deforming the collective human sense of self:  an entreaty. part II, the sequel.
+You can run any Ollama command within Pry and have the results both output and returned within the Pry session.
 
+You can query the LLM automatically once you enter the Pry session, as well as change any of the parameters.
 
-Tasks logic:
-
-open tmux session, track name
-set env vars based on config (per discrete functionality type)
-attach and start pry
-pry fires when_started hook, which
-  adds our custom hooks and commands into Pry session
+The pry session is bound within the PryllamaSession object itself that is created on startup.
 
