@@ -7,8 +7,9 @@ class TmuxSession
 
   attr_reader :name, :windows, :id
 
-  def initialize(name, id)
+  def initialize(name, id, type:nil)
     @name = name
+    @type = type
     @id = id
     @windows = []
     @windows << TmuxWindow.new(self, @windows.count)
@@ -195,11 +196,12 @@ end
 
 class TmuxPane
 
-  attr_reader :id, :window
+  attr_reader :id, :window, :input_pipe, :output_pipe
 
   def initialize(window, id)
     @window = window
     @id = id
+    @input_pipe, @output_pipe = IO.pipe
   end
 
   def target_id
@@ -222,8 +224,20 @@ class TmuxPane
     TmuxPane.send_command_to_pane(target_id, command)
   end
 
+  def pipe_in(input)
+    @input_pipe.puts input
+  end
+
   def destroy
     @window = nil
+  end
+
+  def resize(direction, cells)
+    TmuxPane.resize(target_id, direction, cells)
+  end
+
+  def self.resize(target_id, direction, cells)
+    system("tmux resize-pane -#{direction} #{cells}")
   end
 
   # Send a command to a tmux pane

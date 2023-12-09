@@ -7,6 +7,7 @@ require 'faraday'
 require_relative 'prompt'
 require_relative 'conversation'
 require_relative 'ollama'
+require_relative 'context_helper'
 
 module Langchain::LLM
   # Interface to Ollama API.
@@ -69,13 +70,10 @@ end
 
 class PryllamaSession
 
-  OLLAMA_MODELS = { completions: 'mistral-openorca',
-                 embeddings: 'mistral-openorca',
-                 qa: 'mistral-openorca' }
-
   OLLAMA_SERVER_BASE_URL ||= ENV['OLLAMA_SERVER_BASE_URL'] || 'http://localhost:11434'
 
   attr_reader :conversation
+  attr_accessor :completions_model, :embeddings_model
 
   #todo: just realized this wont work for sesssions with multiple llm sources involved
   # or at least it'll work weirdly.  need. to decouple the logic of llm source 
@@ -83,7 +81,9 @@ class PryllamaSession
   def initialize(name, tmux_session = nil)
     @name = name
     @tmux_session = tmux_session
-    @ollama_models = OLLAMA_MODELS
+    @completions_model = "codellama:7b-instruct-q4_0"
+    @code_model = "codellama:7b-code-q4_0"
+    @embeddings_model = "codellama:7b-instruct-q4_0"
     @ollama_url = OLLAMA_SERVER_BASE_URL
     @conversation = Conversation.new(@name)
     @prompt = Prompt.new("system", "main", "")
@@ -93,19 +93,8 @@ class PryllamaSession
     # a conversation with all its context management necessities
   end
 
-  # TODO: probably shouldn't expose this outside class idk
-  # might as well go full llama in the meantime
   def langchain_client(url = @ollama_url)
     client = Langchain::LLM::Ollama.new(url: url)
-  end
-
-  def completions_model
-    @ollama_models[:completions]
-  end
-
-  
-  def models(type = nil)
-    type.nil? ? @ollama_models : @ollama_models[type]
   end
   
   def context
@@ -123,32 +112,69 @@ class PryllamaSession
 
   end
 
+  def generate(text)
+    @conversation.add(text)
+
+    #todo: add a spinner to indicate progress
+    puts "sending query"
+    response = langchain_client.complete(prompt:@conversation.full_context, model:completions_model, system_prompt:@prompt.text, temperature:0.2)
+    @conversation.add(response.raw_response)
+
+    first_window.panes.last.send_keys @conversation.context.last
+  end
+
+  def generate_code_fim(prefix, suffix)
+    prompt = "<PRE> {#{prefix}} <SUF>{#{suffix}} <MID>"
+
+    puts "sending query"
+    @conversation.add(prompt)
+    response = langchain_client.complete(prompt:prompt, model:@code_model)
+    @conversation.add(response.raw_response)
+
+    first_window.panes.last.send_keys @conversation.context.last
+  end
+
+  def ollama
+    Ollama
+  end
+
+  def full_context
+    @conversation.full_context
+  end
+
   def add_hooks
 
       Pry.hooks.add_hook(:before_session, 'pryllama_intro') do |output, binding, pry_instance|
       
       system("clear")
+      first_window.split_h
+      first_window.panes.last.resize("R", 20)
+      first_window.panes.last.send_command("vim current_context")
+      first_window.panes.last.send_keys("i")
+
+
 
       pry_instance.prompt = Pry::Prompt.new('empty', 'No visible prompt', [proc { '' }, proc { '' }])
-      puts "\n\nW E L C O M E  T O  PaRtY L L A M A  \n
-      \n
-      #comment to send a query to default Ollama model \n\n"
+      puts "\n\nW E L C O M E  T O  PaRtY L L A M A \n\n"
+      puts "You are bound within a Pry session inside a PryllamaSession object\n\n"
+      puts "You can run any ollama cli command with ollama.command_name('arg1', 'arg2')\n\n"
+      puts "You can query the Ollama server by running:  generate()"
       end unless Pry.hooks.hook_exists?(:before_session, 'pryllama_intro')
     
 
-    Pry.hooks.add_hook(:before_eval, 'check_response') do |input|
-        puts "\n"
-        if input[0] == "#" && input[1] != "#"
-            @conversation.add(input[1..-1])
+    # Pry.hooks.add_hook(:before_eval, 'check_response') do |input|
+    #     puts "\n"
+    #     if input[0] == "#" && input[1] != "#"
+    #         @conversation.add(input[1..-1])
 
-            puts "sending query #{@conversation}"
-            response = langchain_client.complete(prompt:@conversation.full_context, model:completions_model, system_prompt:@prompt.text, temperature:0.2)
-            @conversation.add(response.raw_response)
+    #         puts "sending query #{@conversation}"
+    #         response = langchain_client.complete(prompt:@conversation.full_context, model:completions_model, system_prompt:@prompt.text, temperature:0.2)
+    #         @conversation.add(response.raw_response)
 
-            Pry::output.puts "Query and Response added to Conversation context"
+    #         Pry::output.puts "Query and Response added to Conversation context"
             
-        end 
-    end unless Pry.hooks.hook_exists?(:before_eval, 'check_response')
+    #     end 
+    # end unless Pry.hooks.hook_exists?(:before_eval, 'check_response')
 
     Pry.hooks.add_hook(:after_eval, 'add_line') do |input|
       puts "\n"
@@ -191,6 +217,7 @@ class PryllamaSession
   end
 
   # TODO: proper class encapsulation or something whatever
+  # todo:  method missing to dynamically call Tmux window commands
 end
 
 

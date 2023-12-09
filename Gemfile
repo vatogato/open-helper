@@ -11,3 +11,7 @@ gem "html2text", "~> 0.2.1"
 gem "faraday", "~> 2.7"
 
 gem "lolcat", "~> 100.0"
+
+gem "method_source", "~> 1.0"
+
+gem "parser", "~> 3.2"
