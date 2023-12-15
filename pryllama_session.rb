@@ -120,19 +120,48 @@ class PryllamaSession
     response = langchain_client.complete(prompt:@conversation.full_context, model:completions_model, system_prompt:@prompt.text, temperature:0.2)
     @conversation.add(response.raw_response)
 
-    first_window.panes.last.send_keys @conversation.context.last
+    puts @conversation.context.last
   end
 
   def generate_code_fim(prefix, suffix)
     prompt = "<PRE> {#{prefix}} <SUF>{#{suffix}} <MID>"
 
-    puts "sending query"
-    @conversation.add(prompt)
-    response = langchain_client.complete(prompt:prompt, model:@code_model)
-    @conversation.add(response.raw_response)
+    puts "sending query #{prompt}"
 
-    first_window.panes.last.send_keys @conversation.context.last
+    response = langchain_client.complete(prompt:prompt, model:@code_model)
+
+    first_window.panes.last.send_keys response.raw_response
+    response.raw_response
   end
+
+  def generate_code(description)
+    prompt = "<PRE> {#{prefix}} <SUF>{#{suffix}} <MID>"
+
+    puts "sending query #{prompt}"
+
+    response = langchain_client.complete(prompt:prompt, model:@code_model)
+
+    first_window.panes.last.send_keys response.raw_response
+    response.raw_response
+  end
+
+  def generate_method(description, name, context = nil, args = nil)
+    
+    name +="(#{args})" if args
+    prompt = "#a ruby method that #{description} def #{name}"
+    prompt.prepend(context) unless context.nil?
+    generate_code_fim(prompt, "end")
+  end
+
+  def generate_method_with_context(description, name, context, args = nil)
+    generate_method(description, name, context, args)
+  end
+
+  def generate_method_with_repo_context(description, name, args = nil)
+    generate_method_with_context(description, name, ContextHelper.repo_files_content, args)
+  end
+
+ 
 
   def ollama
     Ollama
@@ -146,41 +175,53 @@ class PryllamaSession
 
       Pry.hooks.add_hook(:before_session, 'pryllama_intro') do |output, binding, pry_instance|
       
-      system("clear")
-      first_window.split_h
-      first_window.panes.last.resize("R", 20)
-      first_window.panes.last.send_command("vim current_context")
-      first_window.panes.last.send_keys("i")
+        system("clear")
+        first_window.split_h
+        first_window.panes.last.resize("R", 20)
+        first_window.panes.last.send_command("vim current_context")
+        first_window.panes.last.send_keys("i")
 
 
 
-      pry_instance.prompt = Pry::Prompt.new('empty', 'No visible prompt', [proc { '' }, proc { '' }])
-      puts "\n\nW E L C O M E  T O  PaRtY L L A M A \n\n"
-      puts "You are bound within a Pry session inside a PryllamaSession object\n\n"
-      puts "You can run any ollama cli command with ollama.command_name('arg1', 'arg2')\n\n"
-      puts "You can query the Ollama server by running:  generate()"
+        pry_instance.prompt = Pry::Prompt.new('empty', 'No visible prompt', [proc { '' }, proc { '' }])
+        CLI::UI::Frame.open('W E L C O M E  T O PaRtY LLAMA', color: :green) do
+          CLI::UI::Frame.open('', color: :blue) do
+            puts "You are bound within a Pry session inside a PryllamaSession object\n\n"
+            puts "You can run any ollama cli command with ollama.command_name('arg1', 'arg2')\n\n"
+            puts "Run ollama.help to list options"
+            CLI::UI::Frame.divider("--------")
+            puts "Available Models\n:"
+            ollama.list
+            CLI::UI::Frame.divider("--------")
+            puts "You can query the Ollama serverby running:  generate(<ur prompt here>)"
+    
+            
+          end
+        end
       end unless Pry.hooks.hook_exists?(:before_session, 'pryllama_intro')
+      
+      Pry.hooks.add_hook(:before_eval, 'check_response') do |input|
+        #     puts "\n"
+        #     if input[0] == "#" && input[1] != "#"
+        #         @conversation.add(input[1..-1])
+    
+        #         puts "sending query #{@conversation}"
+        #         response = langchain_client.complete(prompt:@conversation.full_context, model:completions_model, system_prompt:@prompt.text, temperature:0.2)
+        #         @conversation.add(response.raw_response)
+    
+        #         Pry::output.puts "Query and Response added to Conversation context"
+                
+        #     end 
+        end unless Pry.hooks.hook_exists?(:before_eval, 'check_response')
+        
+    end
+     
+      
+
     
 
-    # Pry.hooks.add_hook(:before_eval, 'check_response') do |input|
-    #     puts "\n"
-    #     if input[0] == "#" && input[1] != "#"
-    #         @conversation.add(input[1..-1])
 
-    #         puts "sending query #{@conversation}"
-    #         response = langchain_client.complete(prompt:@conversation.full_context, model:completions_model, system_prompt:@prompt.text, temperature:0.2)
-    #         @conversation.add(response.raw_response)
 
-    #         Pry::output.puts "Query and Response added to Conversation context"
-            
-    #     end 
-    # end unless Pry.hooks.hook_exists?(:before_eval, 'check_response')
-
-    Pry.hooks.add_hook(:after_eval, 'add_line') do |input|
-      puts "\n"
-  end unless Pry.hooks.hook_exists?(:before_eval, 'add_line')
-
-  end
 
   def add_commands
   #define any custom commands here.  I don't know what the paradigm for custom

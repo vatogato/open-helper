@@ -1,0 +1,1147 @@
+require 'faraday'
+require 'json'
+
+class CodeEmbedder
+  DEFAULTS = { embeddings_model_name: 'llama2' }
+
+  # Initialize with the URL of the embeddings service
+  def initialize(url)
+    @url = url
+  end
+
+  # Generates an embedding for a given text using a specified model
+  def embed(text:, model: nil, **options)
+    model_name = model || DEFAULTS[:embeddings_model_name]
+
+    response = client.post("api/embeddings") do |req|
+      req.body = {}
+      req.body["prompt"] = text
+      req.body["model"] = model_name
+      req.body["options"] = options if options.any?
+    end
+
+    # Assuming Langchain::LLM::OllamaResponse is a defined class
+    Langchain::LLM::OllamaResponse.new(response.body, model: model_name)
+  end
+
+  private
+
+  # @return [Faraday::Connection] Faraday client
+  def client
+    @client ||= Faraday.new(url: @url) do |conn|
+      conn.request :json
+      conn.response :json
+      conn.response :raise_error
+    end
+  end
+end
+
+# Usage example
+# embedder = CodeEmbedder.new('http://localhost:11434')
+# response = embedder.embed(text: "def example_method\n  puts 'Hello, world!'\nend")
+# puts response.embedding  # Assuming the response has an 'embedding' method or attribute
+require 'faraday'
+require 'html2text'
+
+module ContextHelper
+
+    
+    def self.create_context_from_files(filenames)
+        ContexttHelper.add_files_to_context([])
+    end
+
+    #need to change this to add some
+    def self.add_file_to_context(context, filepath)
+        file_contents = File.read(filepath)
+        context << file_contents
+    end
+
+    def self.add_files_to_context(context, files)
+        files_content = ''
+        files.each do |file|
+            file_content  += File.read(file)
+        end
+
+        context << files_content
+    end
+
+    def self.get_files_content(filenames)
+        files_content = ''
+        filenames.each do |file|
+            files_content  += File.read(file)
+        end
+
+        files_content
+    end
+
+    # Returns the filenames of all files with the given file type extension, for example, .rb files
+    def self.repo_files_by_extension(extension)
+        Dir.glob("**/*#{extension}")
+    end
+
+    def self.repo_files_content
+       ContextHelper.get_files_content( ContextHelper.repo_files_by_extension(".rb"))
+    end
+
+
+
+
+
+module Reflective
+    def reflect(other_object = nil)
+      description = "This is a #{self.class} object. "
+      description += "It has #{self.methods.count} methods. "
+  
+      if other_object
+        common_methods = self.methods & other_object.methods
+        description += "In relation to a #{other_object.class} object, they share #{common_methods.count} common methods. "
+        description += "Shared methods include: #{common_methods.sort.join(', ')}."
+      else
+        description += "Public methods include: #{self.public_methods(false).sort.join(', ')}. "
+        description += "Its ancestors are: #{self.class.ancestors.join(', ')}."
+      end
+  
+      description
+    end
+  end
+
+  require 'method_source'
+
+  module Embeddable
+    def embed
+      content = extract_content(self)
+      embedder.embed(content: content)
+    end
+  
+    private
+  
+    def extract_content(object)
+      case object
+      when Class, Module
+        object.instance_methods(false).map { |m| object.instance_method(m).source }.join("\n")
+      when Method
+        object.source
+      else
+        object.to_s
+      end
+    rescue MethodSource::SourceNotFoundError => e
+      "Source not found for #{object}"
+    end
+  
+    def embedder
+      @embedder ||= CodeEmbedder.new('http://localhost:11434') # Replace with actual URL if different
+    end
+  end
+
+# Example usage:
+# SomeClassOrModule.extend(Embeddable)
+# some_instance_or_method.extend(Embeddable)
+
+    module DocumentationVectorization
+        def self.extract_and_vectorize_comments(file_path)
+        comments = extract_comments(file_path)
+        embedder.embed(content: comments.join("\n"))
+        end
+    
+        private
+    
+        def self.extract_comments(file_path)
+        file_contents = File.readlines(file_path)
+        file_contents.grep(/^#/)
+        end
+    
+        def self.embedder
+        @embedder ||= CodeEmbedder.new('http://localhost:11434')
+        end
+    end
+    
+  # Usage example
+  # vectorized_comments = DocumentationVectorization.extract_and_vectorize_comments('example.rb')
+
+  module ControlFlowGraphVectorization
+    def self.create_and_vectorize_cfg(file_path)
+      cfg = create_control_flow_graph(file_path)
+      # Vectorize the CFG (this is a placeholder, actual implementation will depend on your CFG structure)
+      embedder.embed(content: cfg.to_s)
+    end
+  
+    private
+  
+    def self.create_control_flow_graph(file_path)
+      # Placeholder for actual CFG creation logic
+      # This should analyze the code and create a graph structure representing the control flow
+      "Control Flow Graph for #{File.basename(file_path)}"
+    end
+  
+    def self.embedder
+      @embedder ||= CodeEmbedder.new('http://localhost:11434')
+    end
+  end
+  
+  # Usage example
+  # vectorized_cfg = ControlFlowGraphVectorization.create_and_vectorize_cfg('example.rb')
+
+  module APILibraryUsageVectorization
+    def self.extract_and_vectorize_api_usage(file_path)
+      api_usage = extract_api_library_calls(file_path)
+      embedder.embed(content: api_usage.join("\n"))
+    end
+  
+    private
+  
+    def self.extract_api_library_calls(file_path)
+      file_contents = File.readlines(file_path)
+      # This regex is a simple example and might need to be adapted for different languages or libraries
+      file_contents.grep(/require\s+['"][\w\/]+['"]/)
+    end
+  
+    def self.embedder
+      @embedder ||= CodeEmbedder.new('http://localhost:11434')
+    end
+  end
+  
+  # Usage example
+  # vectorized_api_usage = APILibraryUsageVectorization.extract_and_vectorize_api_usage('example.rb')
+
+  module CodeChangeHistoryVectorization
+    def self.vectorize_change_history(repo_path)
+      change_history = extract_change_history(repo_path)
+      embedder.embed(content: change_history.join("\n"))
+    end
+  
+    private
+  
+    def self.extract_change_history(repo_path)
+      # Placeholder for actual change history extraction logic
+      # This should interact with a version control system to get the history
+      # For example, using `git log` or similar commands
+      ["Change 1", "Change 2", "Change 3"] # Example changes
+    end
+  
+    def self.embedder
+      @embedder ||= CodeEmbedder.new('http://localhost:11434')
+    end
+  end
+  
+  # Usage example
+  # vectorized_history = CodeChangeHistoryVectorization.vectorize_change_history('/path/to/repo')
+
+  require 'parser/current'
+
+module ASTVectorization
+  def self.create_and_vectorize_ast(file_path)
+    ast = create_abstract_syntax_tree(file_path)
+    # Convert the AST to a string representation (or another format suitable for vectorization)
+    ast_string = ast_to_string(ast)
+    embedder.embed(content: ast_string)
+  end
+
+  private
+
+  def self.create_abstract_syntax_tree(file_path)
+    Parser::CurrentRuby.parse(File.read(file_path))
+  end
+
+  def self.ast_to_string(ast)
+    # Convert the AST to a string or another suitable representation
+    ast.inspect
+  end
+
+  def self.embedder
+    @embedder ||= CodeEmbedder.new('http://localhost:11434')
+  end
+end
+
+# Usage example
+# vectorized_ast = ASTVectorization.create_and_vectorize_ast('example.rb')
+
+module ErrorHandlingVectorization
+    def self.extract_and_vectorize_error_handling(file_path)
+      error_handling_patterns = extract_error_handling_patterns(file_path)
+      embedder.embed(content: error_handling_patterns.join("\n"))
+    end
+  
+    private
+  
+    def self.extract_error_handling_patterns(file_path)
+      file_contents = File.readlines(file_path)
+      # Extract error and exception handling patterns
+      # This regex is a simple example and might need to be adapted for different languages or patterns
+      file_contents.grep(/rescue/)
+    end
+  
+    def self.embedder
+      @embedder ||= CodeEmbedder.new('http://localhost:11434')
+    end
+  end
+  
+  # Usage example
+  # vectorized_error_handling = ErrorHandlingVectorization.extract_and_vectorize_error_handling('example.rb')
+  
+  module CodeMetricsVectorization
+    def self.extract_and_vectorize_metrics(file_path)
+      metrics = extract_code_metrics(file_path)
+      # Convert metrics to a string or another format suitable for vectorization
+      metrics_string = metrics.map { |key, value| "#{key}: #{value}" }.join("\n")
+      embedder.embed(content: metrics_string)
+    end
+  
+    private
+  
+    def self.extract_code_metrics(file_path)
+      # Placeholder for actual code metrics extraction logic
+      # This might include external tools or gems to analyze the code
+      {
+        lines_of_code: 100,  # Example metric
+        number_of_methods: 10
+        # Other metrics...
+      }
+    end
+  
+    def self.embedder
+      @embedder ||= CodeEmbedder.new('http://localhost:11434')
+    end
+  end
+  
+  # Usage example
+  # vectorized_metrics = CodeMetricsVectorization.extract_and_vectorize_metrics('example.rb')
+  
+  module TypeDataFlowVectorization
+    def self.analyze_and_vectorize_data_flow(file_path)
+      data_flow_analysis = analyze_data_flow(file_path)
+      # Convert the data flow analysis to a string or another format suitable for vectorization
+      data_flow_string = data_flow_analysis_to_string(data_flow_analysis)
+      embedder.embed(content: data_flow_string)
+    end
+  
+    private
+  
+    def self.analyze_data_flow(file_path)
+      # Placeholder for actual data flow analysis logic
+      # This should analyze the code to track how data is passed and transformed
+      "Data Flow Analysis for #{File.basename(file_path)}"
+    end
+  
+    def self.data_flow_analysis_to_string(analysis)
+      # Convert the data flow analysis to a string or another suitable representation
+      analysis
+    end
+  
+    def self.embedder
+      @embedder ||= CodeEmbedder.new('http://localhost:11434')
+    end
+  end
+  
+  # Usage example
+  # vectorized_data_flow = TypeDataFlowVectorization.analyze_and_vectorize_data_flow('example.rb')
+  
+  
+  
+  
+
+endrequire_relative 'prompt'
+
+class Conversation
+  #a Conversation is a cumulative context curated
+  # over sessions.
+  #todo:  different types of data within the context.
+  # context will be the raw text and we can abstract
+  #different data types for different types of discrete
+  #units of context (pseudo embeddings)
+  #marked trees of text blocks to allow the LLM to 
+  #refer non-sequentially
+  # this allows maximum context management on the application side
+  # to remove as much unnecessary inference as possible
+  # also allows the storage of important information for injection
+  # at any point
+  #
+    
+    attr_reader :name,:context
+    def initialize(name)
+      @name = name
+      @context = []
+    end
+
+    def add(text)
+      @context << text
+    end
+
+    def add_at(index, content)
+      @context[index] = content
+    end
+
+    def remove_at(index)
+        #leaves the index intact so we 
+        #can see where context was removed
+      ret = @context[index]
+      @context[index] = nil
+      ret
+    end
+    
+    def remove_last_context_block
+      remove_block_from_context(-1)
+    end
+
+    def full_context
+      @context.join
+    end
+
+    def wipe_context
+      @context = []
+    end
+
+end
+BASE_DIR = File.expand_path('.', __dir__)
+
+require 'cli/ui'
+
+CLI::UI::StdoutRouter.enable
+
+# Main frame
+CLI::UI::Frame.open('Pryllama Session', color: :green) do
+    CLI::UI::Frame.open('Pryllama Session', color: :green) do
+        # Left section for file directory
+        CLI::UI::Frame.divider('File Directory')
+        puts "file1.rb\nfile2.rb\nfile3.rb"
+
+        # Middle section for code editor (simulation)
+        CLI::UI::Frame.divider('Code Editor')
+        puts "def hello_world\n  puts 'Hello, World!'\nend"
+
+        # Right section for AI assistant's response (simulation)
+        CLI::UI::Frame.divider('AI Assistant')
+        puts "Suggestion: Use 'puts' for standard output."
+
+        # Slim feedback bar simulation
+        CLI::UI::Frame.divider('Feedback Bar')
+        puts CLI::UI.fmt "{{error:Error: Something went wrong!}}"
+    end
+end
+
+# To simulate real-time updates, you'd need to have a loop that refreshes the content
+# This example is static for simplicity
+require 'open3'
+require 'faraday'
+require 'json'
+require 'html2text'
+
+
+class Ollama 
+
+    OLLAMA_LIBRARY_URL = "https://ollama.ai/library"
+
+    def self.library_list
+        puts "Getting library listing from Ollama website. This might fail if their website structure changes."
+        begin
+            res = Faraday.get(OLLAMA_LIBRARY_URL)
+        rescue => e
+            puts "Failed getting Ollama Library Listing at #{OLLAMA_LIBRARY_URL}: #{e.to_json}"
+            return nil
+        end
+
+        begin
+            lines = Html2Text.convert(res.body)
+        rescue => e
+            puts "Failed parsing #{res.body} : #{e.to_json}"
+        end
+        
+
+        lines.split("\n").select{|x| x.include? "/library/"}.map{|x| x.split("/library").last.delete("/\)")}
+
+    end
+
+    def self.list_model_tags(model)
+    puts "Getting tags for model #{model}"
+    puts "Getting library listing from Ollama website. This might fail if their website structure changes."
+        begin
+            res = Faraday.get(OLLAMA_LIBRARY_URL + "/#{model}/tags")
+        rescue => e
+            puts "Failed getting #{model} tag Listing at #{OLLAMA_LIBRARY_URL} : #{e.to_json}"
+            return nil
+        end
+
+        begin
+            lines = Html2Text.convert(res.body)
+        rescue => e
+            puts "Failed parsing #{res.body} : #{e.to_json}"
+        end
+
+        lines.split("\n").select{|x| x.include? "/library/"}.map{|x| x.split("/library").last.delete("/\)")}
+
+    end
+
+    def self.show_model_info(model, param)
+        Ollama.show(model, "--#{param}")
+    end
+
+
+    #change the following implementation
+    #to use method missing for all
+    #ollama related commands
+    # def self.list
+    #     res = Ollama.command("list")
+    #     rows = res.split("\n")
+    #     headers = rows.first.split("\t").map(&:strip)
+    #     data = rows[1..-1].map { |row| headers.zip(row.split("\t").map(&:strip)).to_h }
+    # end
+
+
+    def self.command(command, args = nil)
+        command += " #{args}" if args
+        response = Ollama.osys(command)
+    end
+
+    #expects Open3.capture3 response object
+    def self.parse_osys_response(response)
+        
+        rows = response.first.split("\n")
+        headers = rows.first.split("\t").map(&:strip)
+        data = rows[1..-1].map { |row| headers.zip(row.split("\t").map(&:strip)).to_h }
+
+    end
+
+    def self.osys(command)
+
+        begin
+            response = Open3.capture3('ollama ' + command)
+        rescue => e
+            puts "Failed calling #{command}: #{e.to_json}"
+        end
+        Ollama.parse_osys_response(response)
+    end 
+
+    def self.method_missing(method_name, *arguments, &block)
+        args = arguments.join(' ')
+        
+    
+        if block_given?
+          yield(Ollama.command("#{method_name} #{args}"))
+        elsif method_name.to_s.include? "and_return"
+            Ollama.command("#{method_name.to_s.split("_").first} #{args}")
+        else
+           command = method_name.to_s
+           command += " #{args}" if args
+           puts Ollama.osys(command)
+        end
+      end
+
+    def self.respond_to_missing?(method_name, include_private = false)
+        true
+    end
+
+end
+
+
+class Prompt
+#everything stored in raw flat files for text manipulation
+#todo: create json or yaml wrapper abstractions
+       #that return the object based on file contents
+
+
+#todo: proper encapsulation into type system
+#modes always includes the default
+
+@@PROMPTS_DIR_PATH="./"
+
+attr_reader :type, :name
+attr_accessor :mode
+
+def initialize(type,name,text, variables:{})
+  @type = type
+  @name = name
+  @text = ""
+  @variables = variables
+end
+
+def text
+  return @text if @text and !@text.empty? 
+
+  @text = Prompt.text(@type, @name)
+end
+
+def self.create(type, name, text)
+  Prompt.new(type, name, text)
+end
+
+
+def self.text(type = nil, name = nil)
+  method_params = method(:text).parameters.map(&:last)
+  method_params.each do |param|
+    raise ArgumentError, "Parameter #{param} is missing or undefined" unless binding.local_variable_defined?(param)
+  end
+
+  get_prompt_text(type, name)
+end
+
+def self.get_prompt_filename(type, name)
+  prompt_files.select do |filename| 
+    
+    filename.split("_")[1] == type && filename.split("_")[2] == name
+  end
+end
+
+
+def self.get_prompt_text(type, name)
+  
+  if @text and !@text.empty?
+    @text
+  else
+
+    begin
+      `cat prompt_#{type}_#{name}.txt`.chomp  
+    rescue => e
+      "fatal error during cat command: #{e.to_s}"
+    end
+ 
+  end
+end
+
+def self.save_prompt(type, name, text)
+  File.write("prompt_#{type}_#{name}.txt", text)
+end
+
+def self.prompt_files
+  Dir.glob("prompt_*.txt")
+end
+
+def self.list_prompts
+  list = prompt_files.map{|filename| filename.split("_")[2]}
+  list.map{|prompt| puts prompt }
+  list
+end
+
+endrequire_relative 'tmux'
+require 'pry'
+require 'cli/ui'
+require_relative "globals"
+require 'langchain'
+require 'faraday'
+require_relative 'prompt'
+require_relative 'conversation'
+require_relative 'ollama'
+require_relative 'context_helper'
+
+module Langchain::LLM
+  # Interface to Ollama API.
+  # Available models: https://ollama.ai/library
+  #
+  # Usage:
+  #    ollama = Langchain::LLM::Ollama.new(url: ENV["OLLAMA_URL"])
+  #
+  class Ollama < Base
+    attr_reader :url
+
+    DEFAULTS = {
+      temperature: 0.0,
+      completion_model_name: "llama2",
+      embeddings_model_name: "llama2"
+    }.freeze
+
+    # Initialize the Ollama client
+    # @param url [String] The URL of the Ollama instance
+    def initialize(url:)
+      @url = url
+    end
+
+    #
+    # Generate the completion for a given prompt
+    #
+    # @param prompt [String] The prompt to complete
+    # @param model [String] The model to use
+    # @param options [Hash] The options to use (https://github.com/jmorganca/ollama/blob/main/docs/modelfile.md#valid-parameters-and-values)
+    # @return [Langchain::LLM::OllamaResponse] Response object
+    #
+    def complete(prompt:, model: nil, system_prompt:nil, **options)
+      response = +""
+
+      model_name = model || DEFAULTS[:completion_model_name]
+
+      client.post("api/generate") do |req|
+        req.body = {}
+        req.body["prompt"] = prompt
+        req.body["model"] = model_name
+        req.body["system"] = system_prompt 
+
+        req.body["options"] = options if options.any?
+
+        # TODO: Implement streaming support when a &block is passed in
+        req.options.on_data = proc do |chunk, size|
+          json_chunk = JSON.parse(chunk)
+
+          unless json_chunk.dig("done")
+            response.to_s << JSON.parse(chunk).dig("response")
+          end
+        end
+      end
+
+      Langchain::LLM::OllamaResponse.new(response, model: model_name)
+    end
+
+end
+end
+
+class PryllamaSession
+
+  OLLAMA_SERVER_BASE_URL ||= ENV['OLLAMA_SERVER_BASE_URL'] || 'http://localhost:11434'
+
+  attr_reader :conversation
+  attr_accessor :completions_model, :embeddings_model
+
+  #todo: just realized this wont work for sesssions with multiple llm sources involved
+  # or at least it'll work weirdly.  need. to decouple the logic of llm source 
+
+  def initialize(name, tmux_session = nil)
+    @name = name
+    @tmux_session = tmux_session
+    @completions_model = "codellama:7b-instruct-q4_0"
+    @code_model = "codellama:7b-code-q4_0"
+    @embeddings_model = "codellama:7b-instruct-q4_0"
+    @ollama_url = OLLAMA_SERVER_BASE_URL
+    @conversation = Conversation.new(@name)
+    @prompt = Prompt.new("system", "main", "")
+
+
+    #i think this makse sense because all LLM based interactions should use the abstraction of 
+    # a conversation with all its context management necessities
+  end
+
+  def langchain_client(url = @ollama_url)
+    client = Langchain::LLM::Ollama.new(url: url)
+  end
+  
+  def context
+    @conversation.full_context
+  end
+
+  def add_config
+
+    original_print = Pry.config.print
+
+    Pry.config.print = proc do |output, value, _pry_|
+      original_print.call(output, value, _pry_)
+      output.puts
+    end
+
+  end
+
+  def generate(text)
+    @conversation.add(text)
+
+    #todo: add a spinner to indicate progress
+    puts "sending query"
+    response = langchain_client.complete(prompt:@conversation.full_context, model:completions_model, system_prompt:@prompt.text, temperature:0.2)
+    @conversation.add(response.raw_response)
+
+    puts @conversation.context.last
+  end
+
+  def generate_code_fim(prefix, suffix)
+    prompt = "<PRE> {#{prefix}} <SUF>{#{suffix}} <MID>"
+
+    puts "sending query #{prompt}"
+
+    response = langchain_client.complete(prompt:prompt, model:@code_model)
+
+    first_window.panes.last.send_keys response.raw_response
+    response.raw_response
+  end
+
+  def generate_code(description)
+    prompt = "<PRE> {#{prefix}} <SUF>{#{suffix}} <MID>"
+
+    puts "sending query #{prompt}"
+
+    response = langchain_client.complete(prompt:prompt, model:@code_model)
+
+    first_window.panes.last.send_keys response.raw_response
+    response.raw_response
+  end
+
+  def generate_method(description, name, context = nil, args = nil)
+    
+    name +="(#{args})" if args
+    prompt = "#a ruby method that #{description} def #{name}"
+    prompt.prepend(context) unless context.nil?
+    generate_code_fim(prompt, "end")
+  end
+
+  def generate_method_with_context(description, name, context, args = nil)
+    generate_method(description, name, context, args)
+  end
+
+  def generate_method_with_repo_context(description, name, args = nil)
+    generate_method_with_context(description, name, ContextHelper.repo_files_content, args)
+  end
+
+ 
+
+  def ollama
+    Ollama
+  end
+
+  def full_context
+    @conversation.full_context
+  end
+
+  def add_hooks
+
+      Pry.hooks.add_hook(:before_session, 'pryllama_intro') do |output, binding, pry_instance|
+      
+        system("clear")
+        first_window.split_h
+        first_window.panes.last.resize("R", 20)
+        first_window.panes.last.send_command("vim current_context")
+        first_window.panes.last.send_keys("i")
+
+
+
+        pry_instance.prompt = Pry::Prompt.new('empty', 'No visible prompt', [proc { '' }, proc { '' }])
+        CLI::UI::Frame.open('W E L C O M E  T O PaRtY LLAMA', color: :green) do
+          CLI::UI::Frame.open('', color: :blue) do
+            puts "You are bound within a Pry session inside a PryllamaSession object\n\n"
+            puts "You can run any ollama cli command with ollama.command_name('arg1', 'arg2')\n\n"
+            puts "Run ollama.help to list options"
+            CLI::UI::Frame.divider("--------")
+            puts "Available Models\n:"
+            ollama.list
+            CLI::UI::Frame.divider("--------")
+            puts "You can query the Ollama serverby running:  generate(<ur prompt here>)"
+    
+            
+          end
+        end
+      end unless Pry.hooks.hook_exists?(:before_session, 'pryllama_intro')
+      
+      Pry.hooks.add_hook(:before_eval, 'check_response') do |input|
+        #     puts "\n"
+        #     if input[0] == "#" && input[1] != "#"
+        #         @conversation.add(input[1..-1])
+    
+        #         puts "sending query #{@conversation}"
+        #         response = langchain_client.complete(prompt:@conversation.full_context, model:completions_model, system_prompt:@prompt.text, temperature:0.2)
+        #         @conversation.add(response.raw_response)
+    
+        #         Pry::output.puts "Query and Response added to Conversation context"
+                
+        #     end 
+        end unless Pry.hooks.hook_exists?(:before_eval, 'check_response')
+        
+    end
+     
+      
+
+    
+
+
+
+
+  def add_commands
+  #define any custom commands here.  I don't know what the paradigm for custom
+  #pry commands vs Session method definitions will be.  Maybe Pry commands will be
+  # Helper specific meta tools, idk.
+  end
+
+  def send_keys_to_pane(keys, id)
+    @tmux_session.windows.first.panes.select{|p| p.id == id}.first.send_keys(keys)
+  end
+
+  def send_command_to_pane(command, id)
+    @tmux_session.windows.first.panes.select{|p| p.id == id}.first.send_command(command)
+  end
+
+
+  
+
+  def first_window
+    @tmux_session.windows.first
+  end
+
+  def start
+    add_config
+    add_hooks
+    add_commands
+
+    Pry.start(binding)
+  end
+
+  def self.start(name)
+    tmux_session = TmuxSession.create(name, script:'ruby session.rb ')
+    PryllamaSession.new("pryllama", tmux_session).start
+  end
+
+  # TODO: proper class encapsulation or something whatever
+  # todo:  method missing to dynamically call Tmux window commands
+end
+
+
+PryllamaSession.start("pryllama")
+require 'open3'
+require 'pry'
+
+class TmuxSession
+  @@sessions = []
+  @@count = 0
+
+  attr_reader :name, :windows, :id
+
+  def initialize(name, id, type:nil)
+    @name = name
+    @type = type
+    @id = id
+    @windows = []
+    @windows << TmuxWindow.new(self, @windows.count)
+    @@count += 1
+    @@sessions << self
+  end
+
+  def new_window
+    @windows << TmuxWindow.new(self, @windows.count)
+  end
+
+  def end
+    TmuxSession.destroy(self)
+    TmuxSession.end_session(name)
+  end
+
+  def attach
+    TmuxSession.attach_session(@name)
+  end
+
+  def first_pane
+    @windows.first.panes.first
+  end
+
+  def self.list
+    @@sessions
+  end
+
+  def self.load_from_name(name)
+    tmux_session = TmuxSession.list_sessions.select{|s| s[:id] == name}.first
+    raise "no Tmux session #{name} found in listing" unless tmux_session and !tmux_session.nil?
+    TmuxSession.new(name, @@count)
+  end
+
+  def self.create(name, detached:true, script:'')
+    session = TmuxSession.new(name, @@count)
+    detached ? create_detached_session(session.name) :
+                create_session(name, detached:false, script:script)
+ 
+    session
+  end
+
+  def self.destroy(session)
+    @@sessions = @@sessions.reject{|x| x.name == session.name}
+    session.windows.each{|window| window.destroy }
+    @@windows = nil
+  end
+
+  # List all tmux sessions
+  def self.list_sessions
+    output, status = Open3.capture2('tmux list-sessions')
+    status.success? ? parse_sessions_info(output) : nil
+  end
+
+  def self.parse_sessions_info(info)
+    #todo move all data transformation logic paramters
+    # to config files or their own methods so that a general
+    # parse method can take a type parameter based on what
+    # type of information is being parsed.
+    info.split("\n").map{|x| {id:x.split(" ")[0].delete(":")}}
+  end
+
+  # Create a new tmux session
+
+  def self.create_detached_session(session_name)
+    self.create_session(session_name, detached:true, script:'')
+  end
+
+  #todo: consolidate logic of system command execution
+  #use open3
+  def self.create_session(session_name, detached:true, script: '')
+    command = "tmux new-session"
+    command += " -d" if detached
+    command += " -s #{session_name}"
+    command += " '#{script}'" unless script.empty?
+    system(command)
+    session_name
+  end
+  
+
+  def self.attach_session(session_name)
+    system("tmux attach-session -t #{session_name}")
+  end
+
+  def self.end_session(session_name) 
+    system("tmux kill-session -t #{session_name}")
+  end 
+
+  def self.set_global_env(variable_name, value)
+    system("tmux set-environment -g #{variable_name} '#{value}'")
+  end
+
+  def self.set_session_env(session_id, variable_name, value)
+    system("tmux set-environment -t #{session_name} #{variable_name} '#{value}'")
+  end
+
+  # Get global environment variables from tmux
+  # Returns all variables if no name is provided, otherwise returns the value of the named variable
+  def self.get_global_env(variable_name = nil)
+    output, status = Open3.capture2("tmux show-environment -g #{variable_name}")
+    return {} unless status.success?
+
+    if variable_name
+      # Return just the value of the named variable
+      return output.split('=', 2).last.strip
+    else
+      # Parse and return all variables as a hash
+      env_vars = {}
+      output.each_line do |line|
+        key, value = line.strip.split('=', 2)
+        env_vars[key] = value
+      end
+      return env_vars
+    end
+  end
+  
+end
+
+class TmuxWindow
+
+  attr_reader :id, :session, :panes
+  def initialize(session, id)
+    @session = session
+    @id = id
+    @panes = [TmuxPane.new(self, 0)]
+  end
+
+  def target_id
+    "#{@session.name}:#{@id}"
+  end
+
+  def new_pane
+    @panes << TmuxPane.new(self, @panes.count)
+    
+  end
+
+  def destroy
+    @session = nil
+    @panes.each{|pane| pane.destroy}
+  end
+
+  # Other window-specific methods...
+
+  def split_v
+    split(vertical:true)
+  end
+
+  def split_h
+    split(vertical:false)
+  end
+
+  def split(vertical: true)
+    # Logic to split a window
+    TmuxWindow.split_by_target_id(target_id, vertical)
+    new_pane
+  end
+
+  # Split a pane in a tmux session
+  def self.split_by_target_id(target_id, vertical = true)
+    direction_flag = vertical ? '-v' : '-h'
+    system("tmux split-window -d #{direction_flag} -t #{target_id}")
+  end
+
+   #get a count of window panes
+   def self.panes_count(window_id)
+    #todo: parser formatting consolidation somewhere
+    list_panes(window_id).first.split("\n").count
+  end
+
+   # List panes in a tmux session
+   def self.list_panes_by_window_id(window_id)
+    list_panes(window_id)
+  end
+
+  def self.list_panes(window_id = nil)
+    command = "tmux list-panes"
+    command += " -t #{window_id}" if window_id
+    output, status = Open3.capture2(command)
+    return nil unless status.success?
+
+  end
+  
+end
+
+class TmuxPane
+
+  attr_reader :id, :window, :input_pipe, :output_pipe
+
+  def initialize(window, id)
+    @window = window
+    @id = id
+    @input_pipe, @output_pipe = IO.pipe
+  end
+
+  def target_id
+    "#{@window.target_id}.#{@id}"
+  end
+
+  def select
+    TmuxPane.select_pane_by_target_id(target_id)
+  end
+
+  def end
+    TmuxPane.end_pane_by_target_id(target_id)
+  end
+
+  def send_keys(keys)
+    TmuxPane.send_keys_to_pane(target_id, keys)
+  end
+
+  def send_command(command)
+    TmuxPane.send_command_to_pane(target_id, command)
+  end
+
+  def pipe_in(input)
+    @input_pipe.puts input
+  end
+
+  def destroy
+    @window = nil
+  end
+
+  def resize(direction, cells)
+    TmuxPane.resize(target_id, direction, cells)
+  end
+
+  def self.resize(target_id, direction, cells)
+    system("tmux resize-pane -#{direction} #{cells}")
+  end
+
+  # Send a command to a tmux pane
+  def self.send_command_to_pane(target_id, command)
+    system("tmux send-keys -t #{target_id} \"#{command}\" C-m")
+  end
+
+   # Send a keys to a tmux pane
+   def self.send_keys_to_pane(target_id, input)
+    system("tmux send-keys -t #{target_id} '#{input}'")
+   end
+
+  # Capture the output from a tmux pane
+  def self.capture_output(target_id, pane_id = 0)
+    output, status = Open3.capture2("tmux capture-pane -pt #{session_name}:#{pane_id}")
+    status.success? ? output : nil
+  end
+
+  # Select a specific pane in a tmux session
+  def self.select_pane_by_target_id(target_id)
+    system("tmux select-pane -t #{target_id}")
+  end
+
+  # End a pane in a tmux session
+  def self.end_pane_by_target_id(session_name, pane_id)
+    system("tmux kill-pane -t #{target_id}")
+  end
+
+ 
+end

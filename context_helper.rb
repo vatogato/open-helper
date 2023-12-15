@@ -15,14 +15,30 @@ module ContextHelper
     end
 
     def self.add_files_to_context(context, files)
+        files_content = ''
         files.each do |file|
-        add_file(context, file)  
+            file_content  += File.read(file)
         end
+
+        context << files_content
+    end
+
+    def self.get_files_content(filenames)
+        files_content = ''
+        filenames.each do |file|
+            files_content  += File.read(file)
+        end
+
+        files_content
     end
 
     # Returns the filenames of all files with the given file type extension, for example, .rb files
-    def self.get_repo_filenames(extension)
-    Dir.glob("**/*#{extension}")
+    def self.repo_files_by_extension(extension)
+        Dir.glob("**/*#{extension}")
+    end
+
+    def self.repo_files_content
+       ContextHelper.get_files_content( ContextHelper.repo_files_by_extension(".rb"))
     end
 
 
